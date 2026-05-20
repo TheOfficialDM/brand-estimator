@@ -141,3 +141,19 @@ test('breakdown uses human-readable labels from ADD_ON_NAMES and DELIVERABLE_NAM
   assert.equal(addOnItem.label, ADD_ON_NAMES['logo-new']);
   assert.equal(delivItem.label, DELIVERABLE_NAMES['figma']);
 });
+
+test('throws on unknown clientType', () => {
+  assert.throws(() => computeEstimate({
+    sections: [1], addOns: [], deliverables: [],
+    clientType: 'bogus',
+    eaf: {vision:1, timeline:1, revisions:1, stakeholders:1}
+  }), /Unknown clientType/);
+});
+
+test('throws on out-of-range eaf index', () => {
+  assert.throws(() => computeEstimate({
+    sections: [1], addOns: [], deliverables: [],
+    clientType: 'solo',
+    eaf: {vision:5, timeline:1, revisions:1, stakeholders:1}
+  }));
+});
