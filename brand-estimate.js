@@ -12,6 +12,7 @@ import {
 // ─── Exported parse/format functions ─────────────────────────────────────────
 
 export function parseSectionInput(input) {
+  if (!input || !input.trim()) return [];
   return input.split(',').map(t => {
     const trimmed = t.trim();
     if (trimmed === 'A' || trimmed === 'a') return 'A';
@@ -123,8 +124,11 @@ export function formatOutput(result, meta) {
 
   for (const item of breakdown) {
     const hrs = item.hours.toFixed(1).padStart(6);
-    const costLow = fmt.format(Math.round((item.hours - (SD / (E / item.hours || 1))) * 75)).padStart(10);
-    lines.push(`  ${item.label.padEnd(42)} ${hrs}`);
+    const ratio = Math.min(SD / (E || 1), 1);
+    const itemLow = (item.hours - item.hours * ratio) * 75;
+    const itemHigh = (item.hours + item.hours * ratio) * 180;
+    const costRange = `${fmt.format(Math.round(itemLow))}–${fmt.format(Math.round(itemHigh))}`;
+    lines.push(`  ${item.label.padEnd(42)} ${hrs}  ${costRange}`);
   }
 
   lines.push('────────────────────────────────────────────────────────────');
@@ -144,7 +148,7 @@ export function formatOutput(result, meta) {
 export function loadCalibration(csvPath) {
   try {
     const raw = readFileSync(csvPath, 'utf8');
-    const lines = raw.trim().split('\n').slice(1); // skip header
+    const lines = raw.replace(/\r/g, '').trim().split('\n').slice(1); // skip header
     if (lines.length < 5) return { coeffA: COEFF_A, rowCount: 0 };
     const rows = lines.map(line => {
       const [total_cp, exp_b, eaf, actual_hrs] = line.split(',').map(Number);
@@ -322,10 +326,18 @@ if (isMain()) {
 
         // EAF
         console.log('\nEAF Drivers (1=Very Low, 2=Nominal, 3=High, 4=Very High):');
-        const v = parseInt((await ask('Vision clarity (1–4): ')).trim(), 10);
-        const t = parseInt((await ask('Timeline pressure (1–4): ')).trim(), 10);
-        const r = parseInt((await ask('Revision rounds (1–4): ')).trim(), 10);
-        const s = parseInt((await ask('Stakeholders (1–4): ')).trim(), 10);
+        const askEaf = async (prompt) => {
+          let val;
+          do {
+            val = parseInt((await ask(prompt)).trim(), 10);
+            if (val < 1 || val > 4 || isNaN(val)) console.log('Please enter 1–4.');
+          } while (val < 1 || val > 4 || isNaN(val));
+          return val;
+        };
+        const v = await askEaf('Vision clarity (1–4): ');
+        const t = await askEaf('Timeline pressure (1–4): ');
+        const r = await askEaf('Revision rounds (1–4): ');
+        const s = await askEaf('Stakeholders (1–4): ');
         eaf = { vision: v - 1, timeline: t - 1, revisions: r - 1, stakeholders: s - 1 };
       }
 
