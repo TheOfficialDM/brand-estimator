@@ -558,10 +558,8 @@ function onTierAll(tier, checked) {
     const item = document.getElementById('section-item-' + s);
     if (item) item.classList.toggle('checked', checked);
   }
-  if (!checked) {
-    isPackage = false;
-    document.getElementById('package-select').value = 'custom';
-  }
+  isPackage = false;
+  document.getElementById('package-select').value = 'custom';
   updateDepWarning();
 }
 
@@ -740,7 +738,7 @@ function getDeliverables(quickBallpark) {
 }
 
 function getEAF(quickBallpark) {
-  if (quickBallpark) return { vision: 1, timeline: 1, revisions: 1, stakeholders: 1 };
+  if (quickBallpark) return { vision: 1, timeline: 1, revisions: 1, stakeholders: 1 }; // index 1 = nominal (×1.0) in all four EAF_MAP arrays
   return {
     vision:       parseInt(document.getElementById('eaf-vision').value) - 1,
     timeline:     parseInt(document.getElementById('eaf-timeline').value) - 1,
