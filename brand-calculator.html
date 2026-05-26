@@ -53,12 +53,12 @@ h1 { font-size: 1.75rem; font-weight: 700; letter-spacing: -0.02em; color: var(-
 
 label { display: block; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 6px; }
 
-select, input[type="number"] {
+select, input[type="number"], input[type="text"] {
   width: 100%; background: var(--surface-2); border: 1px solid var(--border);
   border-radius: var(--radius); color: var(--text); font-size: 0.9rem;
   padding: 8px 12px; appearance: none; -webkit-appearance: none; outline: none; transition: border-color 0.15s;
 }
-select:focus, input[type="number"]:focus { border-color: var(--accent); }
+select:focus, input[type="number"]:focus, input[type="text"]:focus { border-color: var(--accent); }
 .select-wrap { position: relative; }
 .select-wrap::after {
   content: ''; position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
@@ -312,7 +312,7 @@ select:focus, input[type="number"]:focus { border-color: var(--accent); }
       <span class="addon-cp">+2 CP each</span>
       <span class="qty-wrap" id="workshop-qty-wrap">
         <span style="font-size:0.8rem;color:var(--text-muted);">Qty:</span>
-        <input type="number" id="workshop-qty" min="1" max="10" value="1" style="width:56px;" onclick="event.stopPropagation()">
+        <input type="number" id="workshop-qty" min="1" max="10" value="1" style="width:56px;" onclick="event.stopPropagation()" oninput="saveSettings()">
       </span>
     </div>
     <div class="addon-item" id="addon-font-licensing-wrap" onclick="toggleAddon('font-licensing')">
@@ -359,7 +359,7 @@ select:focus, input[type="number"]:focus { border-color: var(--accent); }
       <div class="form-field">
         <label for="eaf-vision">Vision Clarity</label>
         <div class="select-wrap">
-          <select id="eaf-vision">
+          <select id="eaf-vision" onchange="saveSettings()">
             <option value="1">Fully documented (x0.85)</option>
             <option value="2" selected>Clear brief (x1.00)</option>
             <option value="3">Rough idea (x1.20)</option>
@@ -370,7 +370,7 @@ select:focus, input[type="number"]:focus { border-color: var(--accent); }
       <div class="form-field">
         <label for="eaf-timeline">Timeline</label>
         <div class="select-wrap">
-          <select id="eaf-timeline">
+          <select id="eaf-timeline" onchange="saveSettings()">
             <option value="1">12+ weeks (x0.90)</option>
             <option value="2" selected>8-12 weeks (x1.00)</option>
             <option value="3">4-8 weeks (x1.20)</option>
@@ -381,7 +381,7 @@ select:focus, input[type="number"]:focus { border-color: var(--accent); }
       <div class="form-field">
         <label for="eaf-revisions">Revision Rounds</label>
         <div class="select-wrap">
-          <select id="eaf-revisions">
+          <select id="eaf-revisions" onchange="saveSettings()">
             <option value="1">1 round (x0.90)</option>
             <option value="2" selected>2 rounds (x1.00)</option>
             <option value="3">3 rounds (x1.15)</option>
@@ -392,7 +392,7 @@ select:focus, input[type="number"]:focus { border-color: var(--accent); }
       <div class="form-field">
         <label for="eaf-stakeholders">Stakeholder Complexity</label>
         <div class="select-wrap">
-          <select id="eaf-stakeholders">
+          <select id="eaf-stakeholders" onchange="saveSettings()">
             <option value="1">Single decision-maker (x0.90)</option>
             <option value="2" selected>Small team (x1.00)</option>
             <option value="3">Committee (x1.20)</option>
@@ -403,14 +403,59 @@ select:focus, input[type="number"]:focus { border-color: var(--accent); }
     </div>
   </div>
 
-  <!-- Section 6: Other Settings -->
+  <!-- Section 6: Rates & Pricing -->
+  <div class="card">
+    <div class="card-title">Rates &amp; Pricing</div>
+    <div class="form-grid-3" style="margin-bottom:16px;">
+      <div class="form-field">
+        <label for="rate-min">Min Rate ($/hr)</label>
+        <input type="number" id="rate-min" min="1" max="9999" value="75" oninput="saveSettings()">
+      </div>
+      <div class="form-field">
+        <label for="rate-median">Median Rate ($/hr)</label>
+        <input type="number" id="rate-median" min="1" max="9999" value="125" oninput="saveSettings()">
+      </div>
+      <div class="form-field">
+        <label for="rate-max">Max Rate ($/hr)</label>
+        <input type="number" id="rate-max" min="1" max="9999" value="180" oninput="saveSettings()">
+      </div>
+    </div>
+    <div class="form-grid-3" style="margin-bottom:16px;">
+      <div class="form-field">
+        <label for="markup-pct">Fixed Quote Markup (%)</label>
+        <input type="number" id="markup-pct" min="0" max="200" value="15" oninput="saveSettings()">
+      </div>
+      <div class="form-field">
+        <label for="floor-with-fonts">Floor — Fonts ($/project)</label>
+        <input type="number" id="floor-with-fonts" min="0" max="999999" value="2500" oninput="saveSettings()">
+      </div>
+      <div class="form-field">
+        <label for="floor-no-fonts">Floor — No Fonts ($/project)</label>
+        <input type="number" id="floor-no-fonts" min="0" max="999999" value="2000" oninput="saveSettings()">
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn-secondary" style="width:auto;padding:7px 16px;font-size:0.82rem;" onclick="exportRates()">Export rates.json</button>
+      <label class="btn-secondary" style="width:auto;padding:7px 16px;font-size:0.82rem;cursor:pointer;">
+        Import rates.json
+        <input type="file" accept=".json" style="display:none;" onchange="importRates(this)">
+      </label>
+    </div>
+    <p style="font-size:0.75rem;color:var(--text-muted);margin-top:8px;">Export → place <code style="font-size:0.75rem;">rates.json</code> in <code style="font-size:0.75rem;">data/</code> to sync CLI tools. Import ← load a rates.json exported from a CLI run.</p>
+  </div>
+
+  <!-- Section 7: Other Settings -->
   <div class="card">
     <div class="card-title">Other Settings</div>
+    <div class="form-field" style="margin-bottom:16px;">
+      <label for="client-name">Client / Project Name</label>
+      <input type="text" id="client-name" placeholder="Optional — shown on estimate and export" oninput="saveSettings()">
+    </div>
     <div class="form-grid-3">
       <div class="form-field">
         <label for="client-type">Client Type</label>
         <div class="select-wrap">
-          <select id="client-type">
+          <select id="client-type" onchange="saveSettings()">
             <option value="solo">Solo / Startup (1.04)</option>
             <option value="small-biz" selected>Small Business (1.08)</option>
             <option value="mid-market">Mid-Market (1.12)</option>
@@ -433,7 +478,7 @@ select:focus, input[type="number"]:focus { border-color: var(--accent); }
       </div>
       <div class="form-field">
         <label for="hours-week">Hours / Week</label>
-        <input type="number" id="hours-week" min="1" max="60" value="20">
+        <input type="number" id="hours-week" min="1" max="60" value="20" oninput="saveSettings()">
       </div>
     </div>
   </div>
@@ -450,9 +495,130 @@ select:focus, input[type="number"]:focus { border-color: var(--accent); }
 </div>
 
 <script>
-// ── Constants (mirrors lib/brand-model.js exactly) ────────────────────────────
-const COEFF_A = 1.5, MIN_RATE = 75, MAX_RATE = 180;
-const PACKAGE_DISCOUNT = 0.07, FLOOR_WITH_FONTS = 2500, FLOOR_NO_FONTS = 2000;
+// ── Constants ─────────────────────────────────────────────────────────────────
+const COEFF_A = 1.5;
+const PACKAGE_DISCOUNT = 0.07;
+
+// ── Rate / pricing getters (read from DOM, fall back to defaults) ─────────────
+function getMinRate()        { return Math.max(1, parseFloat(document.getElementById('rate-min').value)          ||  75); }
+function getMedianRate()     { return Math.max(1, parseFloat(document.getElementById('rate-median').value)       || 125); }
+function getMaxRate()        { return Math.max(1, parseFloat(document.getElementById('rate-max').value)          || 180); }
+function getMarkupPct()      { return Math.max(0, parseFloat(document.getElementById('markup-pct').value)        ||  15); }
+function getFloorWithFonts() { return Math.max(0, parseFloat(document.getElementById('floor-with-fonts').value)  || 2500); }
+function getFloorNoFonts()   { return Math.max(0, parseFloat(document.getElementById('floor-no-fonts').value)    || 2000); }
+function getClientName()     { return (document.getElementById('client-name').value || '').trim(); }
+
+// ── Settings persistence ──────────────────────────────────────────────────────
+const LS_KEY = 'brand-estimator-settings';
+function saveSettings() {
+  try {
+    localStorage.setItem(LS_KEY, JSON.stringify({
+      // Rates & pricing
+      rateMin:        document.getElementById('rate-min').value,
+      rateMedian:     document.getElementById('rate-median').value,
+      rateMax:        document.getElementById('rate-max').value,
+      markupPct:      document.getElementById('markup-pct').value,
+      floorWithFonts: document.getElementById('floor-with-fonts').value,
+      floorNoFonts:   document.getElementById('floor-no-fonts').value,
+      // Other settings
+      clientName:     document.getElementById('client-name').value,
+      hoursWeek:      document.getElementById('hours-week').value,
+      clientType:     document.getElementById('client-type').value,
+      fontLicensing:  document.querySelector('input[name="font-licensing"]:checked')?.value,
+      // Scope
+      packageSelect:  document.getElementById('package-select').value,
+      sections:       Array.from(document.querySelectorAll('[data-section]:checked')).map(cb => cb.dataset.section),
+      // Add-ons
+      logoWork:       document.querySelector('input[name="logo-work"]:checked')?.value || 'none',
+      addons:         Object.fromEntries(['multi-brand','illustration','workshop','font-licensing'].map(k => [k, !!(document.getElementById('addon-' + k)?.checked)])),
+      workshopQty:    document.getElementById('workshop-qty')?.value,
+      // Deliverables
+      deliverables:   Object.fromEntries(['figma','deck','asset-pkg','notion','portal'].map(k => [k, !!(document.getElementById('del-' + k)?.checked)])),
+      // EAF
+      eafVision:       document.getElementById('eaf-vision')?.value,
+      eafTimeline:     document.getElementById('eaf-timeline')?.value,
+      eafRevisions:    document.getElementById('eaf-revisions')?.value,
+      eafStakeholders: document.getElementById('eaf-stakeholders')?.value,
+      // Mode
+      quickBallpark:  document.getElementById('quick-ballpark')?.checked,
+    }));
+  } catch (e) {}
+}
+function restoreSettings() {
+  let s;
+  try { s = JSON.parse(localStorage.getItem(LS_KEY) || 'null'); } catch (e) {}
+  if (!s) return;
+  const set = (id, val) => { const el = document.getElementById(id); if (el && val != null) el.value = val; };
+
+  // Rates & pricing
+  set('rate-min',          s.rateMin);
+  set('rate-median',       s.rateMedian);
+  set('rate-max',          s.rateMax);
+  set('markup-pct',        s.markupPct);
+  set('floor-with-fonts',  s.floorWithFonts);
+  set('floor-no-fonts',    s.floorNoFonts);
+
+  // Other settings
+  set('client-name',       s.clientName);
+  set('hours-week',        s.hoursWeek);
+  set('client-type',       s.clientType);
+  if (s.fontLicensing) {
+    const radio = document.querySelector(`input[name="font-licensing"][value="${s.fontLicensing}"]`);
+    if (radio) { radio.checked = true; onFontLicenseChange(); }
+  }
+
+  // Package & scope
+  if (s.packageSelect) {
+    document.getElementById('package-select').value = s.packageSelect;
+    isPackage = s.packageSelect !== 'custom';
+  }
+  if (s.sections) {
+    for (const key of s.sections) {
+      const cb = document.getElementById('sec-' + key);
+      const item = document.getElementById('section-item-' + key);
+      if (cb) cb.checked = true;
+      if (item) item.classList.add('checked');
+    }
+    for (const tier of Object.keys(TIER_SECTIONS)) updateTierAllState(tier);
+    updateDepWarning();
+  }
+
+  // Add-ons
+  if (s.logoWork) {
+    const radio = document.querySelector(`input[name="logo-work"][value="${s.logoWork}"]`);
+    if (radio) { radio.checked = true; onLogoChange(); }
+  }
+  if (s.addons) {
+    for (const [k, v] of Object.entries(s.addons)) {
+      const cb = document.getElementById('addon-' + k);
+      if (cb) cb.checked = v;
+      if (k === 'workshop') onWorkshopChange();
+      else syncAddonWrap(k);
+    }
+  }
+  if (s.workshopQty) set('workshop-qty', s.workshopQty);
+
+  // Deliverables
+  if (s.deliverables) {
+    for (const [k, v] of Object.entries(s.deliverables)) {
+      const cb = document.getElementById('del-' + k);
+      if (cb) cb.checked = v;
+      syncDelWrap(k);
+    }
+  }
+
+  // EAF
+  set('eaf-vision',       s.eafVision);
+  set('eaf-timeline',     s.eafTimeline);
+  set('eaf-revisions',    s.eafRevisions);
+  set('eaf-stakeholders', s.eafStakeholders);
+
+  // Mode
+  if (s.quickBallpark != null) {
+    const qb = document.getElementById('quick-ballpark');
+    if (qb) { qb.checked = s.quickBallpark; toggleQuickBallpark(s.quickBallpark); }
+  }
+}
 
 const SECTION_CP = {1:1,2:1,3:1,4:2,5:3,6:1,7:1,8:1,9:1,10:3,11:2,12:3,13:1,14:2,15:2,16:4,17:2,18:2,19:2,20:1,21:1,22:2,23:2,24:3,25:1,26:1,'A':5};
 const SECTION_NAMES = {1:'Brand Overview & Origin Story',2:'Brand Architecture & Relationships',3:'Brand Promise',4:'Brand Essence & Positioning',5:'Target Audience & User Personas',6:'Naming & Language Guidelines',7:'Brand Pillars',8:'Content Strategy by Pillar',9:'Brand Personality',10:'Visual Identity & Color Theory',11:'Typography System',12:'Logo & Mark Usage Guidelines',13:'Spacing & Layout System',14:'Imagery & Photography Direction',15:'Component Design Patterns',16:'Brand Voice & Tone',17:'SEO & AI Search Optimization',18:'Social Media & Digital Presence',19:'Brand Application Examples',20:'Accessibility Standards',21:'Interactive Digital Guidelines',22:'Motion & Animation Guidelines',23:'Differentiation & Competitive Analysis',24:'Brand Strategy',25:'Brand Success Metrics & KPIs',26:'Brand Evolution Changelog','A':'Merchandise & Apparel Design System'};
@@ -548,6 +714,7 @@ function onSectionChange(cb) {
   document.getElementById('package-select').value = 'custom';
   updateTierAllState(cb.dataset.tier);
   updateDepWarning();
+  saveSettings();
 }
 
 function onTierAll(tier, checked) {
@@ -561,6 +728,7 @@ function onTierAll(tier, checked) {
   isPackage = false;
   document.getElementById('package-select').value = 'custom';
   updateDepWarning();
+  saveSettings();
 }
 
 function updateTierAllState(tier) {
@@ -597,6 +765,7 @@ function onPackageChange(value) {
     updateTierAllState(tier);
   }
   updateDepWarning();
+  saveSettings();
 }
 
 // ── Dependency warning ────────────────────────────────────────────────────────
@@ -646,6 +815,7 @@ function onLogoChange() {
       if (radio) wrap.classList.toggle('checked', radio.checked);
     }
   }
+  saveSettings();
 }
 
 function toggleAddon(key) {
@@ -661,6 +831,7 @@ function syncAddonWrap(key) {
   const cb = document.getElementById('addon-' + key);
   const wrap = document.getElementById('addon-' + key + '-wrap');
   if (cb && wrap) wrap.classList.toggle('checked', cb.checked);
+  saveSettings();
 }
 
 function onWorkshopChange() {
@@ -669,6 +840,7 @@ function onWorkshopChange() {
   const qtyWrap = document.getElementById('workshop-qty-wrap');
   if (cb && wrap) wrap.classList.toggle('checked', cb.checked);
   if (qtyWrap) qtyWrap.classList.toggle('visible', !!(cb && cb.checked));
+  saveSettings();
 }
 
 // ── Deliverable handlers ──────────────────────────────────────────────────────
@@ -681,6 +853,7 @@ function syncDelWrap(key) {
   const cb = document.getElementById('del-' + key);
   const wrap = document.getElementById('del-' + key + '-wrap');
   if (cb && wrap) wrap.classList.toggle('checked', cb.checked);
+  saveSettings();
 }
 
 // ── Font license radio ────────────────────────────────────────────────────────
@@ -692,10 +865,11 @@ function onFontLicenseChange() {
       if (radio) wrap.classList.toggle('checked', radio.checked);
     }
   }
+  saveSettings();
 }
 
 // ── Quick Ballpark ────────────────────────────────────────────────────────────
-function onQuickBallparkChange(enabled) { toggleQuickBallpark(enabled); }
+function onQuickBallparkChange(enabled) { toggleQuickBallpark(enabled); saveSettings(); }
 
 function toggleQuickBallpark(enabled) {
   document.getElementById('eaf-section').style.display = enabled ? 'none' : '';
@@ -763,6 +937,14 @@ function computeModel() {
     return;
   }
 
+  const minRate    = getMinRate();
+  const medianRate = getMedianRate();
+  const maxRate    = getMaxRate();
+  if (minRate > medianRate || medianRate > maxRate) {
+    alert('Rate order invalid: min must be ≤ median ≤ max.');
+    return;
+  }
+
   let addOns = getAddOns(quickBallpark);
   const deliverables = getDeliverables(quickBallpark);
   const clientTypeVal = document.getElementById('client-type').value;
@@ -797,11 +979,14 @@ function computeModel() {
   const E  = (a_pert + 4 * m_pert + b_pert) / 6;
   const SD = (b_pert - a_pert) / 6;
 
-  const cost_low   = (E - SD) * MIN_RATE;
-  const cost_high  = (E + SD) * MAX_RATE;
-  const fixed_raw  = cost_high * 1.15;
+  const markupMult = 1 + getMarkupPct() / 100;
+
+  const cost_low   = (E - SD) * minRate;
+  const cost_mid   = E * medianRate;
+  const cost_high  = (E + SD) * maxRate;
+  const fixed_raw  = cost_high * markupMult;
   const fixed_disc = isPackage ? fixed_raw * (1 - PACKAGE_DISCOUNT) : fixed_raw;
-  const floor      = licensedFonts ? FLOOR_WITH_FONTS : FLOOR_NO_FONTS;
+  const floor      = licensedFonts ? getFloorWithFonts() : getFloorNoFonts();
   const fixed_quote = Math.max(fixed_disc, floor);
   const floor_triggered = fixed_disc < floor;
 
@@ -834,11 +1019,13 @@ function computeModel() {
   renderOutput({
     totalCP, sectionCP, addOnCP, deliverableCP,
     EXP_B, eafValue, H_base, H_adj, E, SD,
-    cost_low, cost_high, fixed_raw, fixed_disc, fixed_quote,
+    cost_low, cost_mid, cost_high, fixed_raw, fixed_disc, fixed_quote,
     floor, floor_triggered, licensedFonts, breakdown,
     weeksEstimate: E / hoursPerWeek,
     hoursPerWeek, violations, quickBallpark,
-    hasAppendixA: sections.includes('A')
+    hasAppendixA: sections.includes('A'),
+    minRate, medianRate, maxRate, markupPct: getMarkupPct(),
+    clientName: getClientName()
   });
 }
 
@@ -855,7 +1042,7 @@ function renderOutput(r) {
   header.className = 'results-header';
   const hTitle = document.createElement('span');
   hTitle.className = 'results-title';
-  hTitle.textContent = 'Estimate Summary';
+  hTitle.textContent = r.clientName ? 'Estimate — ' + r.clientName : 'Estimate Summary';
   const hDate = document.createElement('span');
   hDate.className = 'results-date';
   hDate.textContent = now;
@@ -888,7 +1075,7 @@ function renderOutput(r) {
   }
   const qsub = document.createElement('div');
   qsub.className = 'quote-sub';
-  qsub.textContent = 'Hourly range: ' + fmt(r.cost_low) + ' – ' + fmt(r.cost_high);
+  qsub.textContent = 'Expected: ' + fmt(r.cost_mid) + '  |  Range: ' + fmt(r.cost_low) + ' – ' + fmt(r.cost_high);
   qb.appendChild(qsub);
   el.appendChild(qb);
 
@@ -899,6 +1086,7 @@ function renderOutput(r) {
     { label: 'Total CP', value: String(r.totalCP), sub: r.sectionCP + ' sections + ' + r.addOnCP + ' add-ons + ' + r.deliverableCP + ' deliverables' },
     { label: 'EAF Value', value: r.eafValue.toFixed(3) + '×', sub: 'Effort adjustment factor', accent: r.eafValue > 1.1 },
     { label: 'Estimated Hours', value: r.E.toFixed(1), sub: '±' + r.SD.toFixed(1) + ' hrs (1 SD)' },
+    { label: 'Expected Cost', value: fmt(r.cost_mid), sub: 'at $' + r.medianRate + '/hr median' },
     { label: 'Timeline', value: r.weeksEstimate.toFixed(1) + ' wks', sub: 'at ' + r.hoursPerWeek + ' hrs/week' },
   ];
   for (const s of stats) {
@@ -950,7 +1138,7 @@ function renderOutput(r) {
   table.className = 'breakdown-table';
   const thead = document.createElement('thead');
   const hrow = document.createElement('tr');
-  for (const hdr of ['Ref','Item','CP','Hrs (E)']) {
+  for (const hdr of ['Ref','Item','CP','Hrs (E)','Cost Range']) {
     const th = document.createElement('th');
     th.textContent = hdr;
     hrow.appendChild(th);
@@ -972,10 +1160,14 @@ function renderOutput(r) {
     const hrsTd = document.createElement('td');
     hrsTd.className = 'num-col';
     hrsTd.textContent = fmtHrs(row.hours);
+    const costTd = document.createElement('td');
+    costTd.className = 'num-col';
+    costTd.textContent = fmt(row.hours * r.minRate) + ' – ' + fmt(row.hours * r.maxRate);
     tr.appendChild(keyTd);
     tr.appendChild(lblTd);
     tr.appendChild(cpTd);
     tr.appendChild(hrsTd);
+    tr.appendChild(costTd);
     tbody.appendChild(tr);
   }
   table.appendChild(tbody);
@@ -984,8 +1176,9 @@ function renderOutput(r) {
   // Footer note
   const footNote = document.createElement('div');
   footNote.className = 'note';
-  footNote.textContent = 'Rate range: $' + MIN_RATE + '–$' + MAX_RATE + '/hr. Fixed quote = (cost_high x 1.15)' +
-    (isPackage ? ' x 0.93 (package discount)' : '') +
+  footNote.textContent = 'Rates: $' + r.minRate + ' min / $' + r.medianRate + ' median / $' + r.maxRate + ' max per hr. ' +
+    'Fixed quote = cost_high × ' + (1 + r.markupPct / 100).toFixed(2) +
+    (isPackage ? ' × 0.93 (package discount)' : '') +
     '. Floor: ' + fmt(r.floor) + ' (font licensing ' + (r.licensedFonts ? 'included' : 'excluded') + ').';
   el.appendChild(footNote);
 
@@ -994,18 +1187,61 @@ function renderOutput(r) {
   el.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
+// ── Rates import / export (sync with CLI data/rates.json) ────────────────────
+function exportRates() {
+  const rates = {
+    minRate:        getMinRate(),
+    medianRate:     getMedianRate(),
+    maxRate:        getMaxRate(),
+    markupPct:      getMarkupPct(),
+    floorWithFonts: getFloorWithFonts(),
+    floorNoFonts:   getFloorNoFonts(),
+  };
+  const blob = new Blob([JSON.stringify(rates, null, 2) + '\n'], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'rates.json';
+  a.click();
+}
+
+function importRates(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const r = JSON.parse(e.target.result);
+      const set = (id, val) => { const el = document.getElementById(id); if (el && typeof val === 'number') el.value = val; };
+      set('rate-min',          r.minRate);
+      set('rate-median',       r.medianRate);
+      set('rate-max',          r.maxRate);
+      set('markup-pct',        r.markupPct);
+      set('floor-with-fonts',  r.floorWithFonts);
+      set('floor-no-fonts',    r.floorNoFonts);
+      saveSettings();
+    } catch {
+      alert('Invalid rates.json file.');
+    }
+    input.value = '';
+  };
+  reader.readAsText(file);
+}
+
 // ── Export ────────────────────────────────────────────────────────────────────
 function exportEstimate() {
   const text = document.getElementById('results').innerText;
   const blob = new Blob([text], { type: 'text/plain' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = 'brand-estimate-' + new Date().toISOString().slice(0, 10) + '.txt';
+  const cn = getClientName();
+  const slug = cn ? '-' + cn.replace(/[^a-z0-9]/gi, '-').toLowerCase().replace(/-+/g, '-').slice(0, 30) : '';
+  a.download = 'brand-estimate' + slug + '-' + new Date().toISOString().slice(0, 10) + '.txt';
   a.click();
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 buildSectionGrids();
+restoreSettings();
 // Set initial checked state on font-yes-wrap (already marked in HTML but reinforce via JS)
 (function initRadioStyles() {
   const fontYes = document.getElementById('font-yes-wrap');

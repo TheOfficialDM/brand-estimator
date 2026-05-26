@@ -8,8 +8,10 @@ from datetime import date
 
 COEFF_A = 1.5
 MIN_RATE = 75
+MEDIAN_RATE = 125
 MAX_RATE = 180
 PACKAGE_DISCOUNT = 0.07
+MARKUP_MULT = 1.15
 FLOOR_WITH_FONTS = 2500
 FLOOR_NO_FONTS = 2000
 
@@ -132,26 +134,16 @@ def parse_deliverable_input(input_str):
 # ---------------------------------------------------------------------------
 
 def compute_estimate(sections, add_ons, deliverables, client_type, eaf,
-                     is_package, licensed_fonts, coeff_a=None):
-    """
-    Compute a brand guide estimate.
-
-    Parameters
-    ----------
-    sections      : list of int or 'A'
-    add_ons       : list of dicts, e.g. [{'key': 'logo-new', 'qty': 1}]
-    deliverables  : list of str keys
-    client_type   : str — 'solo' | 'small-biz' | 'mid-market' | 'enterprise'
-    eaf           : dict with 0-based indices, e.g. {'vision':1, 'timeline':1, ...}
-    is_package    : bool
-    licensed_fonts: bool
-    coeff_a       : float or None (falls back to COEFF_A)
-
-    Returns
-    -------
-    dict with computation results and breakdown list
-    """
-    A = coeff_a if coeff_a is not None else COEFF_A
+                     is_package, licensed_fonts, coeff_a=None,
+                     min_rate=None, median_rate=None, max_rate=None,
+                     markup_pct=None, floor_with_fonts=None, floor_no_fonts=None):
+    A     = coeff_a        if coeff_a        is not None else COEFF_A
+    r_min = min_rate       if min_rate       is not None else MIN_RATE
+    r_med = median_rate    if median_rate    is not None else MEDIAN_RATE
+    r_max = max_rate       if max_rate       is not None else MAX_RATE
+    mult  = 1 + markup_pct / 100 if markup_pct is not None else MARKUP_MULT
+    fl_w  = floor_with_fonts if floor_with_fonts is not None else FLOOR_WITH_FONTS
+    fl_n  = floor_no_fonts   if floor_no_fonts   is not None else FLOOR_NO_FONTS
 
     exp_b = EXP_B_MAP.get(client_type)
     if exp_b is None:
@@ -189,13 +181,14 @@ def compute_estimate(sections, add_ons, deliverables, client_type, eaf,
     SD = (b_pert - a_pert) / 6
 
     # Cost range
-    cost_low = (E - SD) * MIN_RATE
-    cost_high = (E + SD) * MAX_RATE
+    cost_low  = (E - SD) * r_min
+    cost_mid  = E * r_med
+    cost_high = (E + SD) * r_max
 
     # Fixed quote
-    fixed_raw = cost_high * 1.15
+    fixed_raw = cost_high * mult
     fixed_disc = fixed_raw * (1 - PACKAGE_DISCOUNT) if is_package else fixed_raw
-    floor = FLOOR_WITH_FONTS if licensed_fonts else FLOOR_NO_FONTS
+    floor = fl_w if licensed_fonts else fl_n
     fixed_quote = max(fixed_disc, floor)
     floor_triggered = fixed_disc < floor
 
@@ -239,6 +232,7 @@ def compute_estimate(sections, add_ons, deliverables, client_type, eaf,
         'E': E,
         'SD': SD,
         'cost_low': cost_low,
+        'cost_mid': cost_mid,
         'cost_high': cost_high,
         'fixed_raw': fixed_raw,
         'fixed_disc': fixed_disc,
@@ -247,7 +241,10 @@ def compute_estimate(sections, add_ons, deliverables, client_type, eaf,
         'floor_triggered': floor_triggered,
         'is_package': is_package,
         'licensed_fonts': licensed_fonts,
-        'breakdown': breakdown
+        'breakdown': breakdown,
+        'min_rate': r_min,
+        'median_rate': r_med,
+        'max_rate': r_max,
     }
 
 # ---------------------------------------------------------------------------
@@ -346,6 +343,7 @@ def format_output(result, meta):
     lines.append("  QUOTE")
     lines.append("  " + "-" * 40)
     lines.append(f"  Cost range      : {fmt_usd(result['cost_low'])} – {fmt_usd(result['cost_high'])}")
+    lines.append(f"  Expected cost   : {fmt_usd(result['cost_mid'])}  (at ${result['median_rate']}/hr median)")
     lines.append(f"  Fixed raw       : {fmt_usd(result['fixed_raw'])}")
     if result['is_package']:
         lines.append(f"  Package disc.   : {fmt_usd(result['fixed_disc'])} (-{PACKAGE_DISCOUNT*100:.0f}%)")
@@ -443,6 +441,37 @@ def _ask_add_ons():
     return add_ons
 
 
+def _parse_flag(args, flag):
+    try:
+        i = args.index(flag)
+        return float(args[i + 1])
+    except (ValueError, IndexError):
+        return None
+
+
+def _rates_path():
+    return os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data', 'rates.json')
+
+
+def load_rates():
+    try:
+        import json
+        with open(_rates_path(), encoding='utf-8') as f:
+            r = json.load(f)
+        return {k: v for k, v in r.items() if isinstance(v, (int, float))}
+    except Exception:
+        return {}
+
+
+def save_rates(rates):
+    import json
+    path = _rates_path()
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, 'w', encoding='utf-8') as f:
+        json.dump(rates, f, indent=2)
+        f.write('\n')
+
+
 if __name__ == '__main__':
     args = sys.argv[1:]
     do_calibrate = '--calibrate' in args
@@ -453,6 +482,33 @@ if __name__ == '__main__':
             export_path = args[idx + 1]
         else:
             export_path = f"brand-estimate-{date.today().isoformat()}.md"
+
+    flag_rates = {
+        'min_rate':        _parse_flag(args, '--min-rate'),
+        'median_rate':     _parse_flag(args, '--median-rate'),
+        'max_rate':        _parse_flag(args, '--max-rate'),
+        'markup_pct':      _parse_flag(args, '--markup'),
+        'floor_with_fonts':_parse_flag(args, '--floor-fonts'),
+        'floor_no_fonts':  _parse_flag(args, '--floor-no-fonts'),
+    }
+
+    # Load persisted rates, then let CLI flags override
+    saved = load_rates()
+    key_map = {'minRate':'min_rate','medianRate':'median_rate','maxRate':'max_rate',
+               'markupPct':'markup_pct','floorWithFonts':'floor_with_fonts','floorNoFonts':'floor_no_fonts'}
+    rate_kwargs = {py: saved.get(js) for js, py in key_map.items()}
+    rate_kwargs.update({k: v for k, v in flag_rates.items() if v is not None})
+
+    # Save back if any flag was provided
+    if any(v is not None for v in flag_rates.values()):
+        save_rates({
+            'minRate':        rate_kwargs.get('min_rate')        or MIN_RATE,
+            'medianRate':     rate_kwargs.get('median_rate')     or MEDIAN_RATE,
+            'maxRate':        rate_kwargs.get('max_rate')        or MAX_RATE,
+            'markupPct':      rate_kwargs.get('markup_pct')      or (MARKUP_MULT - 1) * 100,
+            'floorWithFonts': rate_kwargs.get('floor_with_fonts') or FLOOR_WITH_FONTS,
+            'floorNoFonts':   rate_kwargs.get('floor_no_fonts')   or FLOOR_NO_FONTS,
+        })
 
     # Load calibration
     coeff_a, cal_rows = load_calibration()
@@ -545,7 +601,8 @@ if __name__ == '__main__':
         eaf=eaf,
         is_package=is_package,
         licensed_fonts=licensed_fonts,
-        coeff_a=coeff_a
+        coeff_a=coeff_a,
+        **{k: v for k, v in rate_kwargs.items() if v is not None}
     )
 
     meta = {

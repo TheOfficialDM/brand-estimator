@@ -6,7 +6,8 @@ import {
   computeEstimate, calibrateCoeffA, checkDependencies,
   SECTION_CP, SECTION_NAMES, ADD_ON_NAMES, DELIVERABLE_NAMES,
   PACKAGE_SECTIONS, TIER_SECTIONS, ADD_ON_CP, DELIVERABLE_CP,
-  EAF_MAP, EXP_B_MAP, SECTION_DEPS, FLOOR_WITH_FONTS, FLOOR_NO_FONTS, COEFF_A
+  EAF_MAP, EXP_B_MAP, SECTION_DEPS, FLOOR_WITH_FONTS, FLOOR_NO_FONTS, COEFF_A,
+  MIN_RATE, MEDIAN_RATE, MAX_RATE, MARKUP_MULT
 } from './lib/brand-model.js';
 
 // ─── Exported parse/format functions ─────────────────────────────────────────
@@ -62,8 +63,9 @@ const MODE_LABELS = {
 export function formatOutput(result, meta) {
   const {
     totalCP, EXP_B, eafValue, E, SD,
-    cost_low, cost_high, fixed_quote, fixed_disc, fixed_raw,
-    floor, floor_triggered, isPackage, licensedFonts, breakdown
+    cost_low, cost_mid, cost_high, fixed_quote, fixed_disc, fixed_raw,
+    floor, floor_triggered, isPackage, licensedFonts, breakdown,
+    minRate, medianRate, maxRate
   } = result;
   const { mode, hrsPerWeek, packageName, isQuickBallpark, coeffASource } = meta;
 
@@ -109,6 +111,7 @@ export function formatOutput(result, meta) {
   lines.push('────────────────────────────────────────────────────────────');
   lines.push('PACKAGE QUOTE');
   lines.push(`  Hourly Range   : ${fmt.format(Math.round(cost_low))} – ${fmt.format(Math.round(cost_high))}`);
+  lines.push(`  Expected Cost  : ${fmt.format(Math.round(cost_mid))}  (at $${medianRate}/hr median)`);
   lines.push(`  Fixed Quote    : ${fmt.format(Math.round(fixed_quote))}`);
 
   if (isPackage && !floor_triggered && fixed_disc !== undefined && fixed_raw !== undefined) {
@@ -125,8 +128,8 @@ export function formatOutput(result, meta) {
   for (const item of breakdown) {
     const hrs = item.hours.toFixed(1).padStart(6);
     const ratio = Math.min(SD / (E || 1), 1);
-    const itemLow = (item.hours - item.hours * ratio) * 75;
-    const itemHigh = (item.hours + item.hours * ratio) * 180;
+    const itemLow  = item.hours * (1 - ratio) * minRate;
+    const itemHigh = item.hours * (1 + ratio) * maxRate;
     const costRange = `${fmt.format(Math.round(itemLow))}–${fmt.format(Math.round(itemHigh))}`;
     lines.push(`  ${item.label.padEnd(42)} ${hrs}  ${costRange}`);
   }
@@ -143,6 +146,31 @@ export function formatOutput(result, meta) {
   lines.push('════════════════════════════════════════════════════════════');
 
   return lines.join('\n');
+}
+
+export function loadRates(ratesPath) {
+  try {
+    const raw = readFileSync(ratesPath, 'utf8');
+    const r = JSON.parse(raw);
+    return {
+      minRate:        typeof r.minRate        === 'number' ? r.minRate        : undefined,
+      medianRate:     typeof r.medianRate     === 'number' ? r.medianRate     : undefined,
+      maxRate:        typeof r.maxRate        === 'number' ? r.maxRate        : undefined,
+      markupPct:      typeof r.markupPct      === 'number' ? r.markupPct      : undefined,
+      floorWithFonts: typeof r.floorWithFonts === 'number' ? r.floorWithFonts : undefined,
+      floorNoFonts:   typeof r.floorNoFonts   === 'number' ? r.floorNoFonts   : undefined,
+    };
+  } catch {
+    return {};
+  }
+}
+
+export function saveRates(ratesPath, rates) {
+  try {
+    const dir = ratesPath.replace(/[\\/][^\\/]+$/, '');
+    if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+    writeFileSync(ratesPath, JSON.stringify(rates, null, 2) + '\n', 'utf8');
+  } catch {}
 }
 
 export function loadCalibration(csvPath) {
@@ -177,6 +205,13 @@ function isMain() {
   }
 }
 
+function parseFlag(args, flag) {
+  const i = args.indexOf(flag);
+  if (i === -1) return undefined;
+  const v = parseFloat(args[i + 1]);
+  return isNaN(v) ? undefined : v;
+}
+
 if (isMain()) {
   (async () => {
     const args = process.argv.slice(2);
@@ -185,6 +220,14 @@ if (isMain()) {
     const exportPath = exportIdx !== -1
       ? (args[exportIdx + 1] && !args[exportIdx + 1].startsWith('--') ? args[exportIdx + 1] : null)
       : null;
+    const rateFlags = {
+      minRate:        parseFlag(args, '--min-rate'),
+      medianRate:     parseFlag(args, '--median-rate'),
+      maxRate:        parseFlag(args, '--max-rate'),
+      markupPct:      parseFlag(args, '--markup'),
+      floorWithFonts: parseFlag(args, '--floor-fonts'),
+      floorNoFonts:   parseFlag(args, '--floor-no-fonts'),
+    };
 
     const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
     const ask = (q) => new Promise(res => rl.question(q, res));
@@ -213,6 +256,26 @@ if (isMain()) {
       const csvPath = join(process.cwd(), 'data', 'calibration.csv');
       const { coeffA, rowCount } = loadCalibration(csvPath);
       const coeffASource = rowCount >= 5 ? `calibrated (n=${rowCount})` : 'default';
+
+      // Load persisted rates, then let CLI flags override
+      const ratesPath = join(process.cwd(), 'data', 'rates.json');
+      const savedRates = loadRates(ratesPath);
+      const mergedRates = { ...savedRates };
+      for (const [k, v] of Object.entries(rateFlags)) {
+        if (v !== undefined) mergedRates[k] = v;
+      }
+      // Save back if any flag was provided
+      if (Object.values(rateFlags).some(v => v !== undefined)) {
+        saveRates(ratesPath, {
+          minRate:        mergedRates.minRate        ?? MIN_RATE,
+          medianRate:     mergedRates.medianRate     ?? MEDIAN_RATE,
+          maxRate:        mergedRates.maxRate        ?? MAX_RATE,
+          markupPct:      mergedRates.markupPct      ?? (MARKUP_MULT - 1) * 100,
+          floorWithFonts: mergedRates.floorWithFonts ?? FLOOR_WITH_FONTS,
+          floorNoFonts:   mergedRates.floorNoFonts   ?? FLOOR_NO_FONTS,
+        });
+      }
+      Object.assign(rateFlags, mergedRates);
 
       console.log('\n══ Brand Identity Estimator ════════════════════════════');
       console.log('Mode:');
@@ -351,7 +414,8 @@ if (isMain()) {
 
       const result = computeEstimate({
         sections, addOns, deliverables,
-        clientType, eaf, isPackage, licensedFonts, coeffA
+        clientType, eaf, isPackage, licensedFonts, coeffA,
+        ...rateFlags
       });
 
       const out = formatOutput(result, {

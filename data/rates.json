@@ -1,0 +1,8 @@
+{
+  "minRate": 75,
+  "medianRate": 125,
+  "maxRate": 180,
+  "markupPct": 15,
+  "floorWithFonts": 2500,
+  "floorNoFonts": 2000
+}
