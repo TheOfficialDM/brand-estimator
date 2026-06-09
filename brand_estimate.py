@@ -92,7 +92,7 @@ EAF_MAP = {
 SECTION_DEPS = {8:[7], 19:[12], 20:[10], 21:[15], 25:[24]}
 
 # Deliverable menu: 1-indexed
-DELIVERABLE_MENU = ['figma', 'deck', 'asset-pkg', 'notion', 'portal']
+DELIVERABLE_MENU = ['pdf', 'figma', 'deck', 'asset-pkg', 'notion', 'portal']
 
 # ---------------------------------------------------------------------------
 # Parsing helpers
@@ -115,7 +115,7 @@ def parse_section_input(input_str):
 
 
 def parse_deliverable_input(input_str):
-    """Map 1-based menu indices to deliverable keys. 1=figma, 2=deck, 3=asset-pkg, 4=notion, 5=portal."""
+    """Map 1-based menu indices to deliverable keys. 1=pdf, 2=figma, 3=deck, 4=asset-pkg, 5=notion, 6=portal."""
     if not input_str or not input_str.strip():
         return []
     result = []
@@ -577,7 +577,7 @@ if __name__ == '__main__':
         add_ons = _ask_add_ons()
 
         print("\n  Deliverables (comma-separated, or leave blank):")
-        print("  1=Figma  2=Deck  3=Asset Pkg  4=Notion  5=Portal")
+        print("  1=PDF  2=Figma  3=Deck  4=Asset Pkg  5=Notion  6=Portal")
         raw_del = _prompt("  Select", '')
         deliverables = parse_deliverable_input(raw_del)
 

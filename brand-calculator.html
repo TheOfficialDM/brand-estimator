@@ -325,6 +325,11 @@ select:focus, input[type="number"]:focus, input[type="text"]:focus { border-colo
   <!-- Section 4: Deliverables -->
   <div class="card" id="deliverables-section">
     <div class="card-title">Deliverable Formats</div>
+    <div class="addon-item" id="del-pdf-wrap" onclick="toggleDeliverable('pdf')">
+      <input type="checkbox" id="del-pdf" onchange="syncDelWrap('pdf')" onclick="event.stopPropagation()">
+      <span class="addon-label">Static PDF</span>
+      <span class="addon-cp">+0 CP</span>
+    </div>
     <div class="addon-item" id="del-figma-wrap" onclick="toggleDeliverable('figma')">
       <input type="checkbox" id="del-figma" onchange="syncDelWrap('figma')" onclick="event.stopPropagation()">
       <span class="addon-label">Figma source document</span>
@@ -533,7 +538,7 @@ function saveSettings() {
       addons:         Object.fromEntries(['multi-brand','illustration','workshop','font-licensing'].map(k => [k, !!(document.getElementById('addon-' + k)?.checked)])),
       workshopQty:    document.getElementById('workshop-qty')?.value,
       // Deliverables
-      deliverables:   Object.fromEntries(['figma','deck','asset-pkg','notion','portal'].map(k => [k, !!(document.getElementById('del-' + k)?.checked)])),
+      deliverables:   Object.fromEntries(['pdf','figma','deck','asset-pkg','notion','portal'].map(k => [k, !!(document.getElementById('del-' + k)?.checked)])),
       // EAF
       eafVision:       document.getElementById('eaf-vision')?.value,
       eafTimeline:     document.getElementById('eaf-timeline')?.value,
@@ -905,7 +910,7 @@ function getAddOns(quickBallpark) {
 
 function getDeliverables(quickBallpark) {
   if (quickBallpark) return [];
-  return ['figma','deck','asset-pkg','notion','portal'].filter(k => {
+  return ['pdf','figma','deck','asset-pkg','notion','portal'].filter(k => {
     const cb = document.getElementById('del-' + k);
     return cb && cb.checked;
   });

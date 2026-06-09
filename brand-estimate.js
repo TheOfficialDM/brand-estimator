@@ -38,8 +38,8 @@ export function parseAddOnInput(menuInput, workshopAddOns = []) {
   return [...items, ...workshopAddOns];
 }
 
-// Menu: 1→figma, 2→deck, 3→asset-pkg, 4→notion, 5→portal
-const DELIVERABLE_MENU = ['figma', 'deck', 'asset-pkg', 'notion', 'portal'];
+// Menu: 1→pdf, 2→figma, 3→deck, 4→asset-pkg, 5→notion, 6→portal
+const DELIVERABLE_MENU = ['pdf', 'figma', 'deck', 'asset-pkg', 'notion', 'portal'];
 
 export function parseDeliverableInput(input) {
   if (!input || !input.trim()) return [];
@@ -379,11 +379,12 @@ if (isMain()) {
 
         // Deliverables
         console.log('\nDeliverables (comma-separated, or leave blank):');
-        console.log('  1) Figma source document');
-        console.log('  2) Presentation deck');
-        console.log('  3) Brand asset package');
-        console.log('  4) Notion / web document');
-        console.log('  5) Interactive web portal');
+        console.log('  1) Static PDF (0 CP)');
+        console.log('  2) Figma source document');
+        console.log('  3) Presentation deck');
+        console.log('  4) Brand asset package');
+        console.log('  5) Notion / web document');
+        console.log('  6) Interactive web portal');
         const delRaw = (await ask('Select deliverables: ')).trim();
         deliverables = parseDeliverableInput(delRaw);
 

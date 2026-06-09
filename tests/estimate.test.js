@@ -26,8 +26,8 @@ test('parseAddOnInput parses menu indices with workshop passed separately', () =
 });
 
 test('parseDeliverableInput parses menu indices', () => {
-  // Menu: 1=figma, 2=deck, 3=asset-pkg, 4=notion, 5=portal
-  const r = parseDeliverableInput('1,3');
+  // Menu: 1=pdf, 2=figma, 3=deck, 4=asset-pkg, 5=notion, 6=portal
+  const r = parseDeliverableInput('2,4');
   assert.deepEqual(r, ['figma', 'asset-pkg']);
 });
 
